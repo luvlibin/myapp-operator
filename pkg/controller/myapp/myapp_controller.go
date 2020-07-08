@@ -99,34 +99,106 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
-	// Set MyApp instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
+	
+	        // List all pods owned by this myApp instance
+    	myApp := instance
+        myAppList := &corev1.PodList{}
+        lbs := map[string]string{
+        "app":     myApp.Name,
+        "version": "v0.1",
+	}
+        labelSelector := labels.SelectorFromSet(lbs)
+        listOps := &client.ListOptions{Namespace: myApp.Namespace, LabelSelector: labelSelector}
+        if err = r.client.List(context.TODO(), myAppList, listOps); err != nil {
+                return reconcile.Result{}, err
 	}
 
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+    // Count the pods that are pending or running as available
+	var available []corev1.Pod
+    	for _, pod := range myAppList.Items {
+        	if pod.ObjectMeta.DeletionTimestamp != nil {
+            		continue
+        	}
+        	if pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodPending {
+            		available = append(available, pod)
+        	}
+    	}
+    	numAvailable := int32(len(available))
+    	availableNames := []string{}
+    	for _, pod := range available {
+        	availableNames = append(availableNames, pod.ObjectMeta.Name)
+    	}
+
+
+
+    	// Update the status if necessary
+    	status := appv1alpha1.MyAppStatus{
+        PodNames: availableNames,
+    	}
+   	if !reflect.DeepEqual(myApp.Status, status) {
+        	myApp.Status = status
+        	err = r.client.Status().Update(context.TODO(), myApp)
+        	if err != nil {
+            	reqLogger.Error(err, "Failed to update myApp status")
+			return reconcile.Result{}, err
+        	}
+    	}
+
+
+    	if numAvailable > myApp.Spec.Replicas {
+        	reqLogger.Info("Scaling down pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
+        	diff := numAvailable - myApp.Spec.Replicas
+        	dpods := available[:diff]
+        	for _, dpod := range dpods {
+            	err = r.client.Delete(context.TODO(), &dpod)
+		
 		if err != nil {
+			reqLogger.Error(err, "Failed to delete pod", "pod.name", dpod.Name)
+                	return reconcile.Result{}, err
+            	}
+        }
+        return reconcile.Result{Requeue: true}, nil
+    	}
+
+   	if numAvailable < myApp.Spec.Replicas {
+        	reqLogger.Info("Scaling up pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
+        	// Define a new Pod object
+		// Define a new Pod object
+		pod := newPodForCR(instance)
+
+		// Set MyApp instance as the owner and controller
+		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+		err = r.client.Create(context.TODO(), pod)
+        	if err != nil {
+            	reqLogger.Error(err, "Failed to create pod", "pod.name", pod.Name)
+            	return reconcile.Result{}, err
+        	}
+        return reconcile.Result{Requeue: true}, nil
+   // }
+
+
+		/*// Check if this Pod already exists
+		//found := &corev1.Pod{}
+		//err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+		if err != nil && errors.IsNotFound(err) {
+			reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
+			err = r.client.Create(context.TODO(), pod)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			// Pod created successfully - don't requeue
+			return reconcile.Result{}, nil
+		} else if err != nil {
 			return reconcile.Result{}, err
 		}
 
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
-	return reconcile.Result{}, nil
+		// Pod already exists - don't requeue
+		reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)	
+		return reconcile.Result{}, nil*/
+		
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
