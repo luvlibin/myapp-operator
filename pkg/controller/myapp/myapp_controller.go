@@ -156,9 +156,10 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
 			reqLogger.Error(err, "Failed to delete pod", "pod.name", dpod.Name)
                 	return reconcile.Result{}, err
             	}
+	return reconcile.Result{Requeue: true}, nil
         }
-        return reconcile.Result{Requeue: true}, nil
-    	}
+        
+    	
 
    	if numAvailable < myApp.Spec.Replicas {
         	reqLogger.Info("Scaling up pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
@@ -176,7 +177,7 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
             	return reconcile.Result{}, err
         	}
         return reconcile.Result{Requeue: true}, nil
-   // }
+   }
 
 
 		/*// Check if this Pod already exists
@@ -198,7 +199,7 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
 		// Pod already exists - don't requeue
 		reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)	
 		return reconcile.Result{}, nil*/
-		
+	 return reconcile.Result{}, nil
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
