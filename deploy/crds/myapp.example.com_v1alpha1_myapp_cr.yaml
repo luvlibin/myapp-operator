@@ -2,6 +2,7 @@ apiVersion: myapp.example.com/v1alpha1
 kind: MyApp
 metadata:
   name: example-myapp
+  namespace: myappproject
 spec:
   # Add fields here
-  size: 3
+  replicas: 2 

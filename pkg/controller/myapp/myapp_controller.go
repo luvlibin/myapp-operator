@@ -2,13 +2,14 @@ package myapp
 
 import (
 	"context"
+	"reflect"
 
-	myappv1alpha1 "github.com/huzefa51/myapp-operator/pkg/apis/myapp/v1alpha1"
+	appv1alpha1 "github.com/huzefa51/myapp-operator/pkg/apis/myapp/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -46,7 +47,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource MyApp
-	err = c.Watch(&source.Kind{Type: &myappv1alpha1.MyApp{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &appv1alpha1.MyApp{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -55,7 +56,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Pods and requeue the owner MyApp
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &myappv1alpha1.MyApp{},
+		OwnerType:    &appv1alpha1.MyApp{},
 	})
 	if err != nil {
 		return err
@@ -87,7 +88,7 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
 	reqLogger.Info("Reconciling MyApp")
 
 	// Fetch the MyApp instance
-	instance := &myappv1alpha1.MyApp{}
+	instance := &appv1alpha1.MyApp{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -99,9 +100,8 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	
 	        // List all pods owned by this myApp instance
-    	myApp := instance
+	myApp := instance
         myAppList := &corev1.PodList{}
         lbs := map[string]string{
         "app":     myApp.Name,
@@ -115,97 +115,71 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
 
     // Count the pods that are pending or running as available
 	var available []corev1.Pod
-    	for _, pod := range myAppList.Items {
-        	if pod.ObjectMeta.DeletionTimestamp != nil {
-            		continue
-        	}
-        	if pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodPending {
-            		available = append(available, pod)
-        	}
-    	}
-    	numAvailable := int32(len(available))
-    	availableNames := []string{}
-    	for _, pod := range available {
-        	availableNames = append(availableNames, pod.ObjectMeta.Name)
-    	}
-
-
-
-    	// Update the status if necessary
-    	status := appv1alpha1.MyAppStatus{
-        PodNames: availableNames,
-    	}
-   	if !reflect.DeepEqual(myApp.Status, status) {
-        	myApp.Status = status
-        	err = r.client.Status().Update(context.TODO(), myApp)
-        	if err != nil {
-            	reqLogger.Error(err, "Failed to update myApp status")
-			return reconcile.Result{}, err
-        	}
-    	}
-
-
-    	if numAvailable > myApp.Spec.Replicas {
-        	reqLogger.Info("Scaling down pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
-        	diff := numAvailable - myApp.Spec.Replicas
-        	dpods := available[:diff]
-        	for _, dpod := range dpods {
-            	err = r.client.Delete(context.TODO(), &dpod)
-		
+	for _, pod := range myAppList.Items {
+		if pod.ObjectMeta.DeletionTimestamp != nil {
+			continue
+		}
+		if pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodPending {
+			available = append(available, pod)
+		}
+	}
+	numAvailable := int32(len(available))
+	availableNames := []string{}
+	for _, pod := range available {
+		availableNames = append(availableNames, pod.ObjectMeta.Name)
+	}
+	// Update the status if necessary
+	status := appv1alpha1.MyAppStatus{
+		PodNames: availableNames,
+	}
+	if !reflect.DeepEqual(myApp.Status, status) {
+		myApp.Status = status
+		err = r.client.Status().Update(context.TODO(), myApp)
 		if err != nil {
-			reqLogger.Error(err, "Failed to delete pod", "pod.name", dpod.Name)
-                	return reconcile.Result{}, err
-            	}
-	return reconcile.Result{Requeue: true}, nil
-        }
-        
-    	
+			reqLogger.Error(err, "Failed to update myApp status")
+			return reconcile.Result{}, err
+		}
+	}
 
-   	if numAvailable < myApp.Spec.Replicas {
-        	reqLogger.Info("Scaling up pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
-        	// Define a new Pod object
+	if numAvailable > myApp.Spec.Replicas {
+		reqLogger.Info("Scaling down pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
+		diff := numAvailable - myApp.Spec.Replicas
+		dpods := available[:diff]
+		for _, dpod := range dpods {
+			err = r.client.Delete(context.TODO(), &dpod)
+			if err != nil {
+				reqLogger.Error(err, "Failed to delete pod", "pod.name", dpod.Name)
+				return reconcile.Result{}, err
+			}
+		}
+		return reconcile.Result{Requeue: true}, nil
+	}
+
+	if numAvailable < myApp.Spec.Replicas {
+		reqLogger.Info("Scaling up pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
 		// Define a new Pod object
+		// Define a new Pod object
+		reqLogger.Info("myApp value is",myApp)
 		pod := newPodForCR(myApp)
-
+		reqLogger.Info("Pod value is",pod)
 		// Set MyApp instance as the owner and controller
-		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+		if err := controllerutil.SetControllerReference(myApp, pod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
 		err = r.client.Create(context.TODO(), pod)
-        	if err != nil {
-            	reqLogger.Error(err, "Failed to create pod", "pod.name", pod.Name)
-            	return reconcile.Result{}, err
-        	}
-        return reconcile.Result{Requeue: true}, nil
-   }
-
-
-		/*// Check if this Pod already exists
-		//found := &corev1.Pod{}
-		//err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-		if err != nil && errors.IsNotFound(err) {
-			reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-			err = r.client.Create(context.TODO(), pod)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
-			// Pod created successfully - don't requeue
-			return reconcile.Result{}, nil
-		} else if err != nil {
+		if err != nil {
+			reqLogger.Error(err, "Failed to create pod", "pod.name", pod.Name)
 			return reconcile.Result{}, err
 		}
-
-		// Pod already exists - don't requeue
-		reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)	
-		return reconcile.Result{}, nil*/
+		return reconcile.Result{Requeue: true}, nil
+	}
 	 return reconcile.Result{}, nil
 }
-
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *myappv1alpha1.MyApp) *corev1.Pod {
+func newPodForCR(cr *appv1alpha1.MyApp) *corev1.Pod {
 	labels := map[string]string{
 		"app": cr.Name,
+		"version": "v0.1",
 	}
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
