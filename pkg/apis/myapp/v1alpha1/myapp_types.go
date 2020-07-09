@@ -13,8 +13,18 @@ type MyAppSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	Replicas int32 `json:"replicas"`
+	Image Image `json:"image"`
 }
 
+type Image struct {
+	// The repository of the image.
+	Repository string `json:"repository"`
+	// The tag (version) of the image.
+	Tag string `json:"tag"`
+	// The ImagePullPolicy of the image.
+	// +kubebuilder:validation:Enum=Never;Always;IfNotPresent
+	PullPolicy string `json:"pullPolicy"`
+}
 // MyAppStatus defines the observed state of MyApp
 type MyAppStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster

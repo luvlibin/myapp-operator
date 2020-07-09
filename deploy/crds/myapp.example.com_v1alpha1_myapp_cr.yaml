@@ -5,4 +5,8 @@ metadata:
   namespace: myappproject
 spec:
   # Add fields here
+  image: 
+    repository: busybox
+    tag: latest
+    pullPolicy: Always 
   replicas: 2 

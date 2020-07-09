@@ -3,6 +3,7 @@ package myapp
 import (
 	"context"
 	"reflect"
+        "fmt"
 
 	appv1alpha1 "github.com/huzefa51/myapp-operator/pkg/apis/myapp/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -202,7 +203,7 @@ func newPodForCR(cr *appv1alpha1.MyApp) *corev1.Pod {
                 Containers: []corev1.Container{
                     {
                         Name:    "busybox",
-                        Image:   "busybox",
+			Image:   fmt.Sprintf("%v:%v", cr.Spec.Image.Repository,cr.Spec.Image.Tag),
                         Command: []string{"sleep", "3600"},
                     },
                 },
