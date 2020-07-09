@@ -165,7 +165,7 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
         	reqLogger.Info("Scaling up pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
         	// Define a new Pod object
 		// Define a new Pod object
-		pod := newPodForCR(instance)
+		pod := newPodForCR(myApp)
 
 		// Set MyApp instance as the owner and controller
 		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
