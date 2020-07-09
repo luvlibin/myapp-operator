@@ -22,6 +22,7 @@ import (
 
 var log = logf.Log.WithName("controller_myapp")
 
+
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
@@ -30,39 +31,39 @@ var log = logf.Log.WithName("controller_myapp")
 // Add creates a new MyApp Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+    return add(mgr, newReconciler(mgr))
 }
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMyApp{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+    return &ReconcileMyApp{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New("myapp-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
+    // Create a new controller
+    c, err := controller.New("MyApp-controller", mgr, controller.Options{Reconciler: r})
+    if err != nil {
+        return err
+    }
 
-	// Watch for changes to primary resource MyApp
-	err = c.Watch(&source.Kind{Type: &appv1alpha1.MyApp{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
+    // Watch for changes to primary resource MyApp
+    err = c.Watch(&source.Kind{Type: &appv1alpha1.MyApp{}}, &handler.EnqueueRequestForObject{})
+    if err != nil {
+        return err
+    }
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner MyApp
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &appv1alpha1.MyApp{},
-	})
-	if err != nil {
-		return err
-	}
+    // TODO(user): Modify this to be the types you create that are owned by the primary resource
+    // Watch for changes to secondary resource Pods and requeue the owner MyApp
+    err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+        IsController: true,
+        OwnerType:    &appv1alpha1.MyApp{},
+    })
+    if err != nil {
+        return err
+    }
 
-	return nil
+    return nil
 }
 
 // blank assignment to verify that ReconcileMyApp implements reconcile.Reconciler
@@ -70,10 +71,10 @@ var _ reconcile.Reconciler = &ReconcileMyApp{}
 
 // ReconcileMyApp reconciles a MyApp object
 type ReconcileMyApp struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+    // This client, initialized using mgr.Client() above, is a split client
+    // that reads objects from the cache and writes to the apiserver
+    client client.Client
+    scheme *runtime.Scheme
 }
 
 // Reconcile reads that state of the cluster for a MyApp object and makes changes based on the state read
@@ -84,117 +85,127 @@ type ReconcileMyApp struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling MyApp")
+    reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+    reqLogger.Info("Reconciling MyApp")
 
-	// Fetch the MyApp instance
-	instance := &appv1alpha1.MyApp{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
-	}
-	        // List all pods owned by this myApp instance
-	myApp := instance
-        myAppList := &corev1.PodList{}
+    // Fetch the MyApp instance
+    instance := &appv1alpha1.MyApp{}
+    err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+    if err != nil {
+        if errors.IsNotFound(err) {
+            // Request object not found, could have been deleted after reconcile request.
+            // Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+            // Return and don't requeue
+            return reconcile.Result{}, nil
+        }
+        // Error reading the object - requeue the request.
+        return reconcile.Result{}, err
+    }
+        // List all pods owned by this MyApp instance
+		myApp := instance
+        podList := &corev1.PodList{}
         lbs := map[string]string{
         "app":     myApp.Name,
         "version": "v0.1",
-	}
+}
         labelSelector := labels.SelectorFromSet(lbs)
         listOps := &client.ListOptions{Namespace: myApp.Namespace, LabelSelector: labelSelector}
-        if err = r.client.List(context.TODO(), myAppList, listOps); err != nil {
+        if err = r.client.List(context.TODO(), podList, listOps); err != nil {
                 return reconcile.Result{}, err
-	}
+}
+
+
 
     // Count the pods that are pending or running as available
-	var available []corev1.Pod
-	for _, pod := range myAppList.Items {
-		if pod.ObjectMeta.DeletionTimestamp != nil {
-			continue
-		}
-		if pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodPending {
-			available = append(available, pod)
-		}
-	}
-	numAvailable := int32(len(available))
-	availableNames := []string{}
-	for _, pod := range available {
-		availableNames = append(availableNames, pod.ObjectMeta.Name)
-	}
-	// Update the status if necessary
-	status := appv1alpha1.MyAppStatus{
-		PodNames: availableNames,
-	}
-	if !reflect.DeepEqual(myApp.Status, status) {
-		myApp.Status = status
-		err = r.client.Status().Update(context.TODO(), myApp)
-		if err != nil {
-			reqLogger.Error(err, "Failed to update myApp status")
-			return reconcile.Result{}, err
-		}
-	}
+    var available []corev1.Pod
+    for _, pod := range podList.Items {
+        if pod.ObjectMeta.DeletionTimestamp != nil {
+            continue
+        }
+        if pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodPending {
+            available = append(available, pod)
+        }
+    }
+    numAvailable := int32(len(available))
+    availableNames := []string{}
+    for _, pod := range available {
+        availableNames = append(availableNames, pod.ObjectMeta.Name)
+    }
 
-	if numAvailable > myApp.Spec.Replicas {
-		reqLogger.Info("Scaling down pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
-		diff := numAvailable - myApp.Spec.Replicas
-		dpods := available[:diff]
-		for _, dpod := range dpods {
-			err = r.client.Delete(context.TODO(), &dpod)
-			if err != nil {
-				reqLogger.Error(err, "Failed to delete pod", "pod.name", dpod.Name)
-				return reconcile.Result{}, err
-			}
-		}
-		return reconcile.Result{Requeue: true}, nil
-	}
 
-	if numAvailable < myApp.Spec.Replicas {
-		reqLogger.Info("Scaling up pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
-		// Define a new Pod object
-		// Define a new Pod object
-		reqLogger.Info("myApp value is",myApp)
-		pod := newPodForCR(myApp)
-		reqLogger.Info("Pod value is",pod)
-		// Set MyApp instance as the owner and controller
-		if err := controllerutil.SetControllerReference(myApp, pod, r.scheme); err != nil {
-			return reconcile.Result{}, err
-		}
-		err = r.client.Create(context.TODO(), pod)
-		if err != nil {
-			reqLogger.Error(err, "Failed to create pod", "pod.name", pod.Name)
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{Requeue: true}, nil
-	}
-	 return reconcile.Result{}, nil
+
+    // Update the status if necessary
+    status := appv1alpha1.MyAppStatus{
+        PodNames: availableNames,
+    }
+    if !reflect.DeepEqual(myApp.Status, status) {
+        myApp.Status = status
+        err = r.client.Status().Update(context.TODO(), myApp)
+        if err != nil {
+            reqLogger.Error(err, "Failed to update MyApp status")
+            return reconcile.Result{}, err
+        }
+    }
+
+
+
+
+    if numAvailable > myApp.Spec.Replicas {
+        reqLogger.Info("Scaling down pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
+        diff := numAvailable - myApp.Spec.Replicas
+        dpods := available[:diff]
+        for _, dpod := range dpods {
+            err = r.client.Delete(context.TODO(), &dpod)
+            if err != nil {
+                reqLogger.Error(err, "Failed to delete pod", "pod.name", dpod.Name)
+                return reconcile.Result{}, err
+            }
+        }
+        return reconcile.Result{Requeue: true}, nil
+    }
+
+    if numAvailable < myApp.Spec.Replicas {
+        reqLogger.Info("Scaling up pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
+        // Define a new Pod object
+        pod := newPodForCR(myApp)
+        // Set myApp instance as the owner and controller
+        if err := controllerutil.SetControllerReference(myApp, pod, r.scheme); err != nil {
+            return reconcile.Result{}, err
+        }
+        err = r.client.Create(context.TODO(), pod)
+        if err != nil {
+            reqLogger.Error(err, "Failed to create pod", "pod.name", pod.Name)
+            return reconcile.Result{}, err
+        }
+        return reconcile.Result{Requeue: true}, nil
+    }
+
+    return reconcile.Result{}, nil
 }
+
+
+
+
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
 func newPodForCR(cr *appv1alpha1.MyApp) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
-		"version": "v0.1",
-	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
-	}
-}
+        labels := map[string]string{
+            "app":     cr.Name,
+            "version": "v0.1",
+        }
+        return &corev1.Pod{
+            ObjectMeta: metav1.ObjectMeta{
+                GenerateName: cr.Name + "-pod",
+                Namespace:    cr.Namespace,
+                Labels:       labels,
+            },
+            Spec: corev1.PodSpec{
+                Containers: []corev1.Container{
+                    {
+                        Name:    "busybox",
+                        Image:   "busybox",
+                        Command: []string{"sleep", "3600"},
+                    },
+                },
+            },
+        }
+    }
