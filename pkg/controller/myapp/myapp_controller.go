@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	//git "gopkg.in/src-d/go-git.v4"
 )
 
 var log = logf.Log.WithName("controller_myapp")
@@ -169,6 +170,8 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
         reqLogger.Info("Scaling up pods", "Currently available", numAvailable, "Required replicas", myApp.Spec.Replicas)
         // Define a new Pod object
         pod := newPodForCR(myApp)
+	//reqLogger.Info("Cloning data from Git", myApp)
+	//repos := getFilesFromGit(myApp) 
         // Set myApp instance as the owner and controller
         if err := controllerutil.SetControllerReference(myApp, pod, r.scheme); err != nil {
             return reconcile.Result{}, err
