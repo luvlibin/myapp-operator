@@ -3,6 +3,7 @@ kind: Role
 metadata:
   creationTimestamp: null
   name: myapp-operator
+  namespace: openshift-marketplace
 rules:
 - apiGroups:
   - ""

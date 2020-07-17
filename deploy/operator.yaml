@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: myapp-operator
+  namespace: openshift-marketplace
 spec:
   replicas: 1
   selector:
@@ -16,7 +17,7 @@ spec:
       containers:
         - name: myapp-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: quay.io/huzefa51/myapp-operator:latest
           command:
           - myapp-operator
           imagePullPolicy: Always

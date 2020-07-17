@@ -2,6 +2,7 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: myapp-operator
+  namespace: openshift-marketplace
 subjects:
 - kind: ServiceAccount
   name: myapp-operator
