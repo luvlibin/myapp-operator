@@ -1,0 +1,5 @@
+channels:
+- currentCSV: myapp-operator.v0.0.8
+  name: alpha
+defaultChannel: alpha
+packageName: myapp-operator
