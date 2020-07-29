@@ -18,7 +18,11 @@ metadata:
       ]
     capabilities: Basic Install
   name: myapp-operator.v0.0.8
+<<<<<<< HEAD
   namespace: openshift-marketplace 
+=======
+  namespace: placeholder
+>>>>>>> b7e779cd75bc79a5832d93c153672ce87c540639
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
