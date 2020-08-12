@@ -4,6 +4,9 @@ import (
 	"context"
 	"reflect"
 
+	//added new
+	"time"
+
 	appv1alpha1 "github.com/huzefa51/myapp-operator/pkg/apis/myapp/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -18,6 +21,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	//Added new
+	appsv1 "k8s.io/api/apps/v1"
+	"github.com/huzefa51/myapp-operator/cmd/manager/apps"
+	"k8s.io/apimachinery/pkg/types"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var log = logf.Log.WithName("controller_myapp")
@@ -63,6 +71,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
         return err
     }
 
+    //New added
+    err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &appv1alpha1.MyApp{},
+	})
+    //Till here
     return nil
 }
 
@@ -102,17 +116,17 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
         return reconcile.Result{}, err
     }
         // List all pods owned by this MyApp instance
-		myApp := instance
+	myApp := instance
         podList := &corev1.PodList{}
         lbs := map[string]string{
         "app":     myApp.Name,
         "version": "v0.1",
-}
+	}
         labelSelector := labels.SelectorFromSet(lbs)
         listOps := &client.ListOptions{Namespace: myApp.Namespace, LabelSelector: labelSelector}
         if err = r.client.List(context.TODO(), podList, listOps); err != nil {
                 return reconcile.Result{}, err
-}
+	}
 
 
 
@@ -180,6 +194,17 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
         return reconcile.Result{Requeue: true}, nil
     }
 
+    apps := apps.GetApps(instance)
+    existingAbc, abc := apps.Abc.GetDeployment()
+    err = r.client.Get(context.TODO(), types.NamespacedName{Name: abc.Name, Namespace: abc.Namespace}, existingAbc)
+    if err != nil && errors.IsNotFound(err) {
+	reqLogger.Info("Creating Abc")
+    if err = createK8sObject(instance, abc, r); err != nil {
+	return reconcile.Result{}, err
+    }
+	return requeAfter(5, nil)
+   }
+
     return reconcile.Result{}, nil
 }
 
@@ -209,3 +234,25 @@ func newPodForCR(cr *appv1alpha1.MyApp) *corev1.Pod {
             },
         }
     }
+
+
+
+func createK8sObject(instance *appv1alpha1.MyApp, obj v1.Object, r *ReconcileMyApp) error {
+	var err error
+	err = controllerutil.SetControllerReference(instance, obj, r.scheme)
+
+	if err != nil {
+		return err
+	}
+
+	switch t := obj.(type) {
+	case *appsv1.Deployment:
+		err = r.client.Create(context.TODO(), t)
+	}
+	return err
+}
+
+func requeAfter(sec int, err error) (reconcile.Result, error) {
+	t := time.Duration(sec)
+	return reconcile.Result{RequeueAfter: time.Second * t}, err
+}
