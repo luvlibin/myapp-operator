@@ -34,6 +34,9 @@ import (
 
 	//Added new
 	"github.com/go-git/go-git/v5"
+	"io"
+	"io/ioutil"
+	"path/filepath"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -116,6 +119,7 @@ func main() {
 		URL:      "https://github.com/huzefa51/git-envs",
 		Progress: os.Stdout,
 	})*/
+	ExamplePlainClone()
 	//Added till here
 
 	// Create a new manager to provide shared dependencies and start components
@@ -223,23 +227,23 @@ func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
 
 func ExamplePlainClone() {
 	// Tempdir to clone the repository
-	dir, err := ioutil.TempDir("/var/tmp/", "clone-example")
-	log.Info(fmt.Sprintf("dir is: %s", dir))
+	//dir, err := ioutil.TempDir("/var/tmp/", "clone-example")
+	//log.Info(fmt.Sprintf("dir is: %s", dir))
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err, "Failed to create dir")
 	}
 	defer os.RemoveAll(dir) // clean up
 	// Clones the repository into the given dir, just as a normal git clone does
-	_, err = git.PlainClone(dir, false, &git.CloneOptions{
+	_, err = git.PlainClone("/var/tmp/test/", false, &git.CloneOptions{
 		URL: "https://github.com/huzefa51/git-envs.git",
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err, "Failed to clone")
 	}
 	// Prints the content of the CHANGELOG file from the cloned repository
 	changelog, err := os.Open(filepath.Join(dir, "test.yaml"))
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err, "Failed to open the file")
 	}
 	io.Copy(os.Stdout, changelog)
 	// Output: Initial changelog
