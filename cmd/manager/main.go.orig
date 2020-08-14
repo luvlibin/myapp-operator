@@ -31,9 +31,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
-
-	//Added new
-	"github.com/go-git/go-git/v5"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -109,14 +106,6 @@ func main() {
 		options.Namespace = ""
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
 	}
-
-	//Added new
-	//Clone the git repo
-	/*_, err := git.PlainClone("/var/tmp/test", false, &git.CloneOptions{
-		URL:      "https://github.com/huzefa51/git-envs",
-		Progress: os.Stdout,
-	})*/
-	//Added till here
 
 	// Create a new manager to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, options)
@@ -219,28 +208,4 @@ func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
 		return err
 	}
 	return nil
-}
-
-func ExamplePlainClone() {
-	// Tempdir to clone the repository
-	dir, err := ioutil.TempDir("/var/tmp/", "clone-example")
-	log.Info(fmt.Sprintf("dir is: %s", dir))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer os.RemoveAll(dir) // clean up
-	// Clones the repository into the given dir, just as a normal git clone does
-	_, err = git.PlainClone(dir, false, &git.CloneOptions{
-		URL: "https://github.com/huzefa51/git-envs.git",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Prints the content of the CHANGELOG file from the cloned repository
-	changelog, err := os.Open(filepath.Join(dir, "test.yaml"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	io.Copy(os.Stdout, changelog)
-	// Output: Initial changelog
 }
