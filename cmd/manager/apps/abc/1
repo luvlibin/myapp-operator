@@ -1,0 +1,15 @@
+package fluentd
+
+import (
+	"bytes"
+	"text/template"
+
+	"github.com/log_management/logging-operator/cmd/manager/utils"
+
+	loggingv1alpha1 "github.com/log_management/logging-operator/pkg/apis/logging/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+)
+

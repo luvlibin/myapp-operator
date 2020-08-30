@@ -1,0 +1,130 @@
+package abc
+
+import (
+	appv1alpha1 "github.com/huzefa51/myapp-operator/pkg/apis/myapp/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+	//core1 "k8s.io/api/core/v1"
+	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//"k8s.io/apimachinery/pkg/util/intstr"
+
+	"fmt"
+	"io/ioutil"
+	"log"
+	k8Yaml "k8s.io/apimachinery/pkg/util/yaml"
+	"bytes"
+	"os"
+	"text/template"
+	//"gopkg.in/yaml.v2"
+	"github.com/spf13/viper"
+)
+
+
+func CreateAbcDeployment(cr *appv1alpha1.MyApp) *appsv1.Deployment {
+//func CreateAbcDeployment(cr *appv1alpha1.MyApp) *content {
+	//deployment, err := ioutil.ReadFile("/var/tmp/test/deployment.json")
+	_, err := ioutil.ReadFile("/var/tmp/test/deployment.json")
+	//var IMAGE = "tomcat:latest"
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	type ENV struct {
+		IMAGE string
+	}
+	//p := ENV{IMAGE: "tomcat:latest"}
+	//s.Setenv("IMAGE", "tomcat:latest")
+	//value := os.Getenv("IMAGE")
+	//fmt.Printf("os package: %s = %s \n", "name", value)
+	/*var deployment = `
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: abc
+  namespace: mytest-operator
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      run: abc
+  template:
+    metadata:
+      labels:
+        run: abc 
+    spec:
+      containers:
+      - name: abc 
+        image: tomcat:latest
+        ports:
+        - containerPort: 80
+`*/
+	// parse the template
+	viper.SetConfigFile("/var/tmp/test/env.yaml")
+
+
+	tpl, err := template.ParseFiles("/var/tmp/test/deployment.json")
+	fmt.Printf("os package: %s = %s \n", "name", tpl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// execute the template with the given data
+	var ts bytes.Buffer
+	tpl.Execute(&ts, viper)
+	fmt.Printf("User JSON:\n%v\n", ts.String())
+	d := &appsv1.Deployment{}
+	//dec := k8Yaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(deployment)), 1000)
+	dec := k8Yaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(ts.String())), 1000)
+	//dec := yaml.NewDecoder(deployment)
+	if err := dec.Decode(&d); err != nil {
+        	//return nil, err
+		log.Fatal(err)
+	}
+
+	fmt.Println("%+v", d)
+	return d
+	//decode := api.Codecs.UniversalDeserializer().Decode
+	/*decode := api.Codecs.UniversalDecoder().Decode
+	obj, _, err := decode([]byte(deployment), nil, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%#v\n", obj)*/
+//	fmt.Println(string(content))
+
+	/*label := map[string]string{
+		"run": "abc",
+	}
+	//return fmt.Println(string(content))
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "abc",
+			Namespace: cr.ObjectMeta.Namespace,
+			Labels:    label,
+		},
+
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: label,
+			},
+
+			Template: core1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: label,
+				},
+
+				Spec: core1.PodSpec{
+					Containers: []core1.Container{
+						{
+							Name:  "abc",
+							Image: "tomcat:latest",
+							Ports: []core1.ContainerPort{
+								{
+									ContainerPort: 8080,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}*/
+}

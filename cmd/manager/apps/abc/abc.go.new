@@ -1,0 +1,233 @@
+package abc
+
+import (
+	appv1alpha1 "github.com/huzefa51/myapp-operator/pkg/apis/myapp/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+	core1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//"k8s.io/apimachinery/pkg/util/intstr"
+
+	"fmt"
+	"io/ioutil"
+	"log"
+	k8Yaml "k8s.io/apimachinery/pkg/util/yaml"
+	"bytes"
+	"os"
+	"text/template"
+	"gopkg.in/yaml.v2"
+	//"github.com/spf13/viper"
+)
+
+
+func CreateAbcDeployment(cr *appv1alpha1.MyApp) *appsv1.Deployment {
+//func CreateAbcDeployment(cr *appv1alpha1.MyApp) *content {
+	//deployment, err := ioutil.ReadFile("/var/tmp/test/deployment.json")
+	inputYamlFile, err := ioutil.ReadFile("/var/tmp/test/env.yaml")
+	//javaOptsFile, err := ioutil.ReadFile("/var/tmp/test/java-opts")
+	type Config struct {
+		IMAGE string `yaml:"IMAGE"`
+		PORT int `yaml:"PORT"`
+		APP_NAME string `yaml:"APP_NAME"`
+		NAMESPACE string `yaml:"NAMESPACE"`
+		JAVA_OPTS string
+	}
+	var config Config
+	type Cm struct {
+		JAVA_OPTS string
+		APP_NAME string `yaml:"APP_NAME"`
+		NAMESPACE string `yaml:"NAMESPACE"`
+	}
+	var cm Cm
+
+	//var IMAGE = "tomcat:latest"
+	err = yaml.Unmarshal(inputYamlFile, &config)
+	err = yaml.Unmarshal(inputYamlFile, &cm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	
+
+
+	//fmt.Printf("IMAGE is : %s", config.IMAGE)
+	//p := ENV{IMAGE: "tomcat:latest"}
+	//s.Setenv("IMAGE", "tomcat:latest")
+	//value := os.Getenv("IMAGE")
+	//fmt.Printf("os package: %s = %s \n", "name", value)
+	/*var deployment = `
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: abc
+  namespace: mytest-operator
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      run: abc
+  template:
+    metadata:
+      labels:
+        run: abc 
+    spec:
+      containers:
+      - name: abc 
+        image: tomcat:latest
+        ports:
+        - containerPort: 80
+`*/
+	// parse the template
+	//viper.SetConfigFile("/var/tmp/test/env.yaml")
+
+
+	tpl, err := template.ParseFiles("/var/tmp/test/deployment.json")
+
+
+	//Add the java-opts file data in config.yaml
+	cnf, err := template.ParseFiles("/var/tmp/test/java-opts")
+	//sec, err := template.ParseFiles("/var/tmp/test/secret.yaml","/var/tmp/test/abc.txt","/var/tmp/test/def.txt","/var/tmp/test/ghi.txt","/var/tmp/test/jkl.txt")
+	//test, err := template.ParseFiles("/var/tmp/test/config.yaml")
+	//fmt.Printf("os package: %s = %s \n", "name", tpl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// execute the template with the given data
+	var ts bytes.Buffer
+	var val bytes.Buffer
+	var tmp bytes.Buffer
+	var cmap bytes.Buffer
+	tpl.Execute(&ts, config)
+	//cnf.ExecuteTemplate(os.Stdout,"/var/tmp/test/java-opts",nil)
+	par, err := template.ParseFiles("/var/tmp/java-opts")
+	par.Execute(&tmp, cm)
+	cnf.Execute(&val, cm)
+	//sec.Execute(&ts, cm)
+	//test.Execute(&val,cm)
+
+	fmt.Printf("Par: \n%v\n", tmp.String())
+
+
+	fmt.Printf("test: \n%v\n", val.String())
+	//Write data to file
+	//writeToFile(val.String())
+	fmt.Printf("java-opts data: \n%v\n", tmp.String())
+	cm.JAVA_OPTS = `tmp.String()`
+	fmt.Printf("java-opts from variable: \n%v\n",cm.JAVA_OPTS)
+	configmap,err := template.ParseFiles("/var/tmp/test/config.yaml")
+	configmap.Execute(&cmap, cm)
+	fmt.Printf("configmap data: \n%v\n", cmap.String())
+	//sec, err := template.ParseFiles("/var/tmp/test/secret.yaml",val.String())
+
+	//sec.Execute(&ts, cm)
+	fmt.Printf("tpl: \n%v\n", tpl)
+	fmt.Printf("Parsed Template: \n%v\n", ts.String())
+
+	
+
+	d := &appsv1.Deployment{}
+	c := &core1.ConfigMap{}
+	//dec := k8Yaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(deployment)), 1000)
+	dec := k8Yaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(ts.String())), 1000)
+	//dec := yaml.NewDecoder(deployment)
+	if err := dec.Decode(&d); err != nil {
+        	//return nil, err
+		log.Fatal(err)
+	}
+	/*yamlFile, err := ioutil.ReadFile("/var/tmp/test/config.yaml")
+	err = yaml.Unmarshal(yamlFile, &config)
+    	if err != nil {
+        	log.Fatal(err)
+    	}*/
+
+	con := k8Yaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(cmap.String())), 1000)
+	//fmt.Printf("cdata: %+v", con.Decode(&c))
+	//con := k8Yaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(data)), 10000)
+	//dec := yaml.NewDecoder(deployment)
+	if err := con.Decode(&c); err != nil {
+        	//return nil, err
+		log.Fatal(err)
+	}
+
+	fmt.Println("configmap %+v", c)
+	fmt.Println("Deployment %+v", d)
+
+	//fmt.Println("configmap %+v", c)
+	return d
+
+
+}
+
+func writeToFile(val string){
+    f, err := os.Create("/var/tmp/java-opts")
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    l, err := f.WriteString(val)
+    if err != nil {
+        fmt.Println(err)
+        f.Close()
+        return
+    }
+    fmt.Println(l, "bytes written successfully")
+    err = f.Close()
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+}
+
+
+// CreateConfigMap for FluentD
+func CreateConfigMap(cr *appv1alpha1.MyApp) *corev1.ConfigMap {
+
+        templateInput := TemplateInput{}
+
+        configMap := generateConfig(templateInput, configmapTemplate)
+
+        return &corev1.ConfigMap{
+                TypeMeta: metav1.TypeMeta{
+                        Kind:       "ConfigMap",
+                        APIVersion: "v1",
+                },
+
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:      "fluentd-config",
+                        Namespace: cr.ObjectMeta.Namespace,
+                },
+
+                Data: map[string]string{
+                        "fluent.conf": *configMap,
+                },
+        }
+}
+
+
+// TemplateInput structure
+type TemplateInput struct {
+        Inputs []Input
+}
+
+// Input structure
+type Input struct {
+        Tag     string
+        Outputs []Output
+}
+
+// Output spec
+type Output struct {
+        Type         string
+        IndexPattern string
+}
+
+func generateConfig(TemplateInput TemplateInput, configmapTemplate string) *string {
+        output := new(bytes.Buffer)
+        tmpl, err := template.New("config").Parse(configmapTemplate)
+        if err != nil {
+                return nil
+        }
+        err = tmpl.Execute(output, TemplateInput)
+        outputString := output.String()
+        return &outputString
+}

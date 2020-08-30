@@ -26,6 +26,7 @@ import (
 	"github.com/huzefa51/myapp-operator/cmd/manager/apps"
 	"k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"fmt"
 )
 
 var log = logf.Log.WithName("controller_myapp")
@@ -72,10 +73,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
     }
 
     //New added
+    err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &appv1alpha1.MyApp{},
+	})
     err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &appv1alpha1.MyApp{},
 	})
+
     //Till here
     return nil
 }
@@ -195,6 +201,63 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
     }
 
     apps := apps.GetApps(instance)
+    existingConfigMap, configMap := apps.Abc.GetConfigMap()
+    fmt.Println("configMap Data=",configMap.Data)
+    fmt.Println("Existing configMap Data=",existingConfigMap.Data)
+    err = r.client.Get(context.TODO(), types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, existingConfigMap)
+    if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating Config Map")
+		if err = createK8sObject(instance, configMap, r); err != nil {
+			return reconcile.Result{}, err
+		}
+		return requeAfter(1, nil)
+	}
+    
+    //Config Update
+    eq := reflect.DeepEqual(existingConfigMap.Data, configMap.Data)
+    fmt.Println("configmap eq=",eq)
+    if !eq {
+	fmt.Println("Config changed. Updating...")
+	reqLogger.Info("Config Changed. Updating...")
+	existingConfigMap.Data = configMap.Data
+	err = r.client.Update(context.TODO(), existingConfigMap)
+	fmt.Println("Config Updated.")
+	reqLogger.Info("Config Updated.")
+	if err != nil {
+		reqLogger.Error(err, "Failed")
+	}
+    }
+
+    //Logic to add Secrets
+    existingSecret, secret := apps.Abc.GetSecret()
+    fmt.Println("secret Data=",secret.StringData)
+    fmt.Println("Existing secret Data=",existingSecret.StringData)
+    err = r.client.Get(context.TODO(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, existingSecret)
+    if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating Secret")
+		if err = createK8sObject(instance, secret, r); err != nil {
+			return reconcile.Result{}, err
+		}
+		return requeAfter(1, nil)
+	}
+
+    //Secret Update
+    seceq := reflect.DeepEqual(existingSecret.StringData, secret.StringData)
+    fmt.Println("seceq-",seceq)
+    if !seceq {
+	fmt.Println("Secrets changed. Updating...")
+	reqLogger.Info("Secrets Changed. Updating...")
+	existingSecret.StringData = secret.StringData
+	err = r.client.Update(context.TODO(), existingSecret)
+	fmt.Println("Secrets Updated.")
+	reqLogger.Info("Secrets Updated.")
+	if err != nil {
+		reqLogger.Error(err, "Failed")
+	}
+    }
+
+    //Logic to add deployments
+    //apps := apps.GetApps(instance)
     existingAbc, abc := apps.Abc.GetDeployment()
     err = r.client.Get(context.TODO(), types.NamespacedName{Name: abc.Name, Namespace: abc.Namespace}, existingAbc)
     if err != nil && errors.IsNotFound(err) {
@@ -246,6 +309,10 @@ func createK8sObject(instance *appv1alpha1.MyApp, obj v1.Object, r *ReconcileMyA
 	}
 
 	switch t := obj.(type) {
+	case *corev1.ConfigMap:
+		err = r.client.Create(context.TODO(), t)
+	case *corev1.Secret:
+		err = r.client.Create(context.TODO(), t)
 	case *appsv1.Deployment:
 		err = r.client.Create(context.TODO(), t)
 	}
