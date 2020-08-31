@@ -14,13 +14,13 @@ import (
 type Config struct {
 	IMAGE string `yaml:"IMAGE"`
 	PORT int `yaml:"PORT"`
-	APP_NAME string `yaml:"APP_NAME"`
-	NAMESPACE string `yaml:"NAMESPACE"`
 	SECRET_FILES string `yaml:"SECRET_FILES"`
 	CONFIGMAP_FILES string `yaml:"CONFIGMAP_FILES"`
 	JAVA_OPTS string
+	APP_NAME string 
+	NAMESPACE string 
 }
-
+var config Config
 
 
 
@@ -30,7 +30,7 @@ func readConfigFile(cr *appv1alpha1.MyApp) *Config {
 		log.Printf("Error while reading env config file %v ", err)
 	}
 
-	var config Config
+	//var config Config
 	err = yaml.Unmarshal(inputYamlFile, &config)
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)

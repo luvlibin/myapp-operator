@@ -10,8 +10,8 @@ import (
 	appv1alpha1 "github.com/huzefa51/myapp-operator/pkg/apis/myapp/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -122,7 +122,7 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
         return reconcile.Result{}, err
     }
         // List all pods owned by this MyApp instance
-	myApp := instance
+/*	myApp := instance
         podList := &corev1.PodList{}
         lbs := map[string]string{
         "app":     myApp.Name,
@@ -198,7 +198,7 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
             return reconcile.Result{}, err
         }
         return reconcile.Result{Requeue: true}, nil
-    }
+    }*/
 
     apps := apps.GetApps(instance)
     existingConfigMap, configMap := apps.Abc.GetConfigMap()
@@ -275,7 +275,7 @@ func (r *ReconcileMyApp) Reconcile(request reconcile.Request) (reconcile.Result,
 
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *appv1alpha1.MyApp) *corev1.Pod {
+/*func newPodForCR(cr *appv1alpha1.MyApp) *corev1.Pod {
         labels := map[string]string{
             "app":     cr.Name,
             "version": "v0.1",
@@ -297,7 +297,7 @@ func newPodForCR(cr *appv1alpha1.MyApp) *corev1.Pod {
             },
         }
     }
-
+*/
 
 
 func createK8sObject(instance *appv1alpha1.MyApp, obj v1.Object, r *ReconcileMyApp) error {

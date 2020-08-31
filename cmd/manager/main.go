@@ -234,6 +234,17 @@ func ExamplePlainClone() {
 	}*/
 	//defer os.RemoveAll(dir)*/ // clean up
 	// Clones the repository into the given dir, just as a normal git clone does
+	if _, err := os.Stat("/var/tmp/test/"); !os.IsNotExist(err) {
+	// path/to/whatever exists
+		fmt.Println("/var/tmp/test/ directory exists. Deleting it")
+		err := os.RemoveAll("/var/tmp/test/")
+		if err != nil {
+			log.Error(err, "Failed to delete the dir")
+		}
+	} else {
+		fmt.Println("/var/tmp/test/ directory doesn't exists")
+	}
+
 	_,err := git.PlainClone("/var/tmp/test/", false, &git.CloneOptions{
 		URL: "https://github.com/huzefa51/git-envs.git",
 	})
